@@ -36,6 +36,11 @@ while : ;do
   eval lncli getinfo | jq -r '[.identity_pubkey,"'${outgoingcap}'","'${incomincap}'","--me--"," "," "]| join("," )' >> nodelist.txt  #add own node to list
   
   sort nodelist.txt -o nodelist.txt
+  displaywidth=`tput cols` 
+  if   [ "$displaywidth" -gt 164 ]; then dispsize="L";colorda="007m";colordb="007m";colordc="007m";colordd="001m"
+elif [ "$displaywidth" -gt 104 ]; then dispsize="M";colorda="007m";colordb="007m";colordc="001m";colordd="007m"
+elif [ "$displaywidth" -gt 79  ]; then dispsize="S";colorda="007m";colordb="001m";colordc="007m";colordd="007m"
+else                                     dispsize="Z";colorda="001m";colordb="007m";colordc="007m";colordd="007m";fi
 #----------START--WEB DATA GRABBER---------------------------------------------
   mkdir -p pages;rm -f nodelist-temp.txt pages/webdatanew.txt
   cp nodelist.txt nodelist-temp.txt
@@ -51,7 +56,7 @@ while : ;do
     barlen=$(( 120 )) #DO MORE
     for (( c=1; c<=$(( $barlen - ( $(( $barlen  / $myrecs )) * $myrecs ) )); c++ )); do echo -ne "=";done        #fill in gap bars segments
     while read thisID f2 f3 f4 f5; do
-        if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +30`";then  #freshness check
+        if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +27`";then  #freshness check
           eval curl -s https://1ml.com/node/$thisID/channels?order=capacity -o pages/$thisID.html
           for (( c=1; c<=$(( $barlen  / $myrecs / 2 )); c++ )); do echo -n -e "\e[38;5;54m=\e[0m";done          #draw bar segment
         else
@@ -93,7 +98,7 @@ while : ;do
       if [[ -n "$balance" ]];then abalance="           ${balance}";balanceA="${abalance:(-9):3}";balanceB="${abalance:(-6):3}";balanceC="${abalance:(-3):3}";balance="${balanceA// /} ${balanceB// /} ${balanceC// /}";balance="${balance/  /}";fi
       balance="'\e[38;5;232m'___________'\e[0m'${balance}";balance="${balance:0:14}${balance: -17}"
 
-      title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<')(>"`
+      title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<)'(>"`    #remove problem characters from alias
       ipexam=`eval lncli getnodeinfo ${thisID} |jq -r '.node.addresses[].addr'`
       ipstatus="-ip4-";ipcolor="001m"
       if [[ $ipexam == *"n:"* ]];then ipstatus="onion";ipcolor="113m";fi
@@ -103,7 +108,15 @@ while : ;do
       if   [ "$state"   = "" ];then country=$city ;              city=""
     	elif [ "$country" = "" ];then country=$state; state=$city; city="";fi
     #--------------processing 
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:6}"`
+      if   [ "$dispsize" = "L" ];then
+        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:6}"`
+      elif [ "$dispsize" = "M" ];then
+        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
+      elif [ "$dispsize" = "S" ];then
+        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:20}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
+      else
+        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:3},$balance,$incoming,"${title:0:8}",'\e[38;5;$ipcolor' ${ipstatus:0:1}'\e[0m',${cstate:0:1},${init:0:1}"`
+      fi
     else
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7}"`
       echo -e "${OUTPUTME}" >> mismatch.txt
@@ -111,15 +124,24 @@ while : ;do
     echo "${OUTPUTME}" >> combined.txt
   done <nodelist.txt 3<pages/webdata.txt
 #---------end--combiner--------------------------------------------------------
-    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Cap,AvgChan,Biggest,Age,City,St,Co"
+    if   [ "$dispsize" = "L" ];then
+    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,St,Co"
+  elif [ "$dispsize" = "M" ];then
+    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac."
+  elif [ "$dispsize" = "S" ];then
+    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init"
+  else
+    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mT,A,I"
+  fi
     data_table=`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`
     echo -e "${header}\n${data_table}" > myout.txt
     OUTPUTME=`cat myout.txt | column -n -ts,`
-    incomincap="          ${incomincap}";incomincapA="${incomincap:(-9):3}";incomincapB="${incomincap:(-6):3}";incomincapC="${incomincap:(-3):3}";incomincap="${incomincapA// /} ${incomincapB// /} ${incomincapC// /}";incomincap="${incomincap/  /}"
+    #incomincap="          ${incomincap}";incomincapA="${incomincap:(-9):3}";incomincapB="${incomincap:(-6):3}";incomincapC="${incomincap:(-3):3}";incomincap="${incomincapA// /} ${incomincapB// /} ${incomincapC// /}";incomincap="${incomincap/  /}"
+    #outgoingcap="          ${outgoingcap}";outgoingcapA="${outgoingcap:(-9):3}";outgoingcapB="${outgoingcap:(-6):3}";outgoingcapC="${outgoingcap:(-3):3}";outgoingcap="${outgoingcapA// /} ${outgoingcapB// /} ${outgoingcapC// /}";outgoingcap="${outgoingcap/  /}"
     walletbal="             ${walletbal}";walletbalA="${walletbal:(-9):3}";walletbalB="${walletbal:(-6):3}";walletbalC="${walletbal:(-3):3}";walletbal="${walletbalA// /} ${walletbalB// /} ${walletbalC// /}";walletbal="${walletbal/  /}"
-    outgoingcap="          ${outgoingcap}";outgoingcapA="${outgoingcap:(-9):3}";outgoingcapB="${outgoingcap:(-6):3}";outgoingcapC="${outgoingcap:(-3):3}";outgoingcap="${outgoingcapA// /} ${outgoingcapB// /} ${outgoingcapC// /}";outgoingcap="${outgoingcap/  /}"
   clear
-  echo -e "${OUTPUTME}\nChans: \e[38;5;45m${recs}\e[0m ${reco}/${reci}  \e[38;5;157m${outgoingcap} \e[0m \e[38;5;183m ${incomincap}\e[0m \e[38;5;113m ${walletbal}\e[0m in wallet (${unconfirmed} unconfirmed) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times})	Income: \e[38;5;83m${income}\e[0m  ${fwding}"
+  #echo -e "${OUTPUTME}\nChans: \e[38;5;45m${recs}\e[0m ${reco}/${reci}  \e[38;5;157m${outgoingcap} \e[0m \e[38;5;183m ${incomincap}\e[0m \e[38;5;113m ${walletbal}\e[0m in wallet (${unconfirmed} unconfirmed) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times})	Income: \e[38;5;83m${income}\e[0m  ${fwding}"
+  echo -e "${OUTPUTME}\nIn wallet   \e[38;5;111m${walletbal}\e[0m  Income: \e[38;5;83m${income}\e[0m Chans: \e[38;5;45m${recs}\e[0m (${reco}/${reci})\n  (${unconfirmed} unconfirmed) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) ${fwding}"
   rm -f combined.txt myout.txt nodelist.txt nodelist-temp.txt rawout.txt rawoutp.txt
-  secsi=$((5));while [ $secsi -gt -1 ]; do echo -ne "$secsi\033[0K\r";sleep 1; : $((secsi--));done   #countdown
+  secsi=$((5));while [ $secsi -gt -1 ]; do echo -ne `tput cols`" columns now - \e[38;5;$colorda 50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[0m and\e[38;5;$colordd 165\e[0m Updating in \e[38;5;99m$secsi \e[0m \033[0K\r";sleep 1; : $((secsi--));done   #countdown
 done
