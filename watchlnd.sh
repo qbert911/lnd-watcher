@@ -9,7 +9,7 @@ while : ;do
   walletbal=`eval lncli walletbalance |jq -r '.total_balance'`
   unconfirmed=`eval lncli walletbalance |jq -r '.unconfirmed_balance'`
   income=`eval lncli feereport | jq -r '.month_fee_sum'`
-  fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|[.amt_in,.amt_out,.fee,.fee_msat]'`
+  fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
   
   eval lncli listchannels > rawout.txt
   cat rawout.txt | jq -r '.channels[] | [.remote_pubkey,.local_balance,.remote_balance,(.active|tostring),(.initiator|tostring),.commit_fee] | join("," )' > nodelist.txt
@@ -37,10 +37,12 @@ while : ;do
   
   sort nodelist.txt -o nodelist.txt
   displaywidth=`tput cols` 
-  if   [ "$displaywidth" -gt 164 ]; then dispsize="L";colorda="007m";colordb="007m";colordc="007m";colordd="001m"
-elif [ "$displaywidth" -gt 104 ]; then dispsize="M";colorda="007m";colordb="007m";colordc="001m";colordd="007m"
-elif [ "$displaywidth" -gt 79  ]; then dispsize="S";colorda="007m";colordb="001m";colordc="007m";colordd="007m"
-else                                     dispsize="Z";colorda="001m";colordb="007m";colordc="007m";colordd="007m";fi
+  if   [ "$displaywidth" -gt 164 ]; then dispsize="A";colorda="007m";colordb="007m";colordc="007m";colordd="007m";colorde="001m"
+  elif [ "$displaywidth" -gt 134 ]; then dispsize="B";colorda="007m";colordb="007m";colordc="007m";colordd="001m";colorde="007m"
+  elif [ "$displaywidth" -gt 104 ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m"
+  elif [ "$displaywidth" -gt 79  ]; then dispsize="D";colorda="007m";colordb="001m";colordc="007m";colordd="007m";colorde="007m"
+  else                                   dispsize="E";colorda="001m";colordb="007m";colordc="007m";colordd="007m";colorde="007m";fi
+  walletbal="             ${walletbal}";walletbalA="${walletbal:(-9):3}";walletbalB="${walletbal:(-6):3}";walletbalC="${walletbal:(-3):3}";walletbal="${walletbalA// /} ${walletbalB// /} ${walletbalC// /}";walletbal="${walletbal/  /}"
 #----------START--WEB DATA GRABBER---------------------------------------------
   mkdir -p pages;rm -f nodelist-temp.txt pages/webdatanew.txt
   cp nodelist.txt nodelist-temp.txt
@@ -52,8 +54,7 @@ else                                     dispsize="Z";colorda="001m";colordb="00
   done < nodelist-temp.txt
   if [ "$dirty" = true ];then
     echo "Downloading data for $myrecs nodes: "`date`
-    echo -ne "[-----------+-----------+-----------+-----------+----------50%----------+-----------+-----------+-----------+------------]\033[121D"
-    barlen=$(( 120 )) #DO MORE
+    barlen=$(( $displaywidth - 2 )) #DO MORE
     for (( c=1; c<=$(( $barlen - ( $(( $barlen  / $myrecs )) * $myrecs ) )); c++ )); do echo -ne "=";done        #fill in gap bars segments
     while read thisID f2 f3 f4 f5; do
         if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +27`";then  #freshness check
@@ -108,14 +109,21 @@ else                                     dispsize="Z";colorda="001m";colordb="00
       if   [ "$state"   = "" ];then country=$city ;              city=""
     	elif [ "$country" = "" ];then country=$state; state=$city; city="";fi
     #--------------processing 
-      if   [ "$dispsize" = "L" ];then
+      if   [ "$dispsize" = "A" ];then
         OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:6}"`
-      elif [ "$dispsize" = "M" ];then
+        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,St,Co"
+      elif [ "$dispsize" = "B" ];then
+        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age"`
+        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age"
+      elif [ "$dispsize" = "C" ];then
         OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
-      elif [ "$dispsize" = "S" ];then
+        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac."
+      elif [ "$dispsize" = "D" ];then
         OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:20}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
+        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init"
       else
         OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:3},$balance,$incoming,"${title:0:8}",'\e[38;5;$ipcolor' ${ipstatus:0:1}'\e[0m',${cstate:0:1},${init:0:1}"`
+        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mT,A,I"
       fi
     else
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7}"`
@@ -124,24 +132,11 @@ else                                     dispsize="Z";colorda="001m";colordb="00
     echo "${OUTPUTME}" >> combined.txt
   done <nodelist.txt 3<pages/webdata.txt
 #---------end--combiner--------------------------------------------------------
-    if   [ "$dispsize" = "L" ];then
-    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,St,Co"
-  elif [ "$dispsize" = "M" ];then
-    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac."
-  elif [ "$dispsize" = "S" ];then
-    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init"
-  else
-    header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mT,A,I"
-  fi
-    data_table=`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`
-    echo -e "${header}\n${data_table}" > myout.txt
-    OUTPUTME=`cat myout.txt | column -n -ts,`
-    #incomincap="          ${incomincap}";incomincapA="${incomincap:(-9):3}";incomincapB="${incomincap:(-6):3}";incomincapC="${incomincap:(-3):3}";incomincap="${incomincapA// /} ${incomincapB// /} ${incomincapC// /}";incomincap="${incomincap/  /}"
-    #outgoingcap="          ${outgoingcap}";outgoingcapA="${outgoingcap:(-9):3}";outgoingcapB="${outgoingcap:(-6):3}";outgoingcapC="${outgoingcap:(-3):3}";outgoingcap="${outgoingcapA// /} ${outgoingcapB// /} ${outgoingcapC// /}";outgoingcap="${outgoingcap/  /}"
-    walletbal="             ${walletbal}";walletbalA="${walletbal:(-9):3}";walletbalB="${walletbal:(-6):3}";walletbalC="${walletbal:(-3):3}";walletbal="${walletbalA// /} ${walletbalB// /} ${walletbalC// /}";walletbal="${walletbal/  /}"
+  data_table=`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`
+  echo -e "${header}\n${data_table}" > myout.txt
+  OUTPUTF=`cat myout.txt | column -n -ts,`
   clear
-  #echo -e "${OUTPUTME}\nChans: \e[38;5;45m${recs}\e[0m ${reco}/${reci}  \e[38;5;157m${outgoingcap} \e[0m \e[38;5;183m ${incomincap}\e[0m \e[38;5;113m ${walletbal}\e[0m in wallet (${unconfirmed} unconfirmed) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times})	Income: \e[38;5;83m${income}\e[0m  ${fwding}"
-  echo -e "${OUTPUTME}\nIn wallet   \e[38;5;111m${walletbal}\e[0m  Income: \e[38;5;83m${income}\e[0m Chans: \e[38;5;45m${recs}\e[0m (${reco}/${reci})\n  (${unconfirmed} unconfirmed) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) ${fwding}"
+  echo -e "${OUTPUTF}\nIn wallet   \e[38;5;111m${walletbal}\e[0m  Income: \e[38;5;83m${income}\e[0m Chans: \e[38;5;45m${recs}\e[0m (${reco}/${reci})\n  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
   rm -f combined.txt myout.txt nodelist.txt nodelist-temp.txt rawout.txt rawoutp.txt
-  secsi=$((5));while [ $secsi -gt -1 ]; do echo -ne `tput cols`" columns now - \e[38;5;$colorda 50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[0m and\e[38;5;$colordd 165\e[0m Updating in \e[38;5;99m$secsi \e[0m \033[0K\r";sleep 1; : $((secsi--));done   #countdown
+  secsi=$((5));while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 165\e[0m] Update in \e[38;5;99m$secsi \e[0m \033[0K\r";sleep 1; : $((secsi--));done   #countdown
 done
