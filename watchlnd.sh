@@ -1,9 +1,7 @@
 #!/bin/bash
-PS1=$
-PROMPT_COMMAND=
-echo -en "\033]0;LND Watcher\a"
+PS1=$;PROMPT_COMMAND=;echo -en "\033]0;LND Watcher\a"
 IFS=","
-
+updatetime=$((7))
 while : ;do
 #----------START--LND RPC POLLING----------------------------------------------
   height=`eval lncli getinfo |jq -r '.block_height'`
@@ -42,7 +40,7 @@ while : ;do
   elif [ "$displaywidth" -gt 134 ]; then dispsize="B";colorda="007m";colordb="007m";colordc="007m";colordd="001m";colorde="007m"
   elif [ "$displaywidth" -gt 104 ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m"
   elif [ "$displaywidth" -gt 79  ]; then dispsize="D";colorda="007m";colordb="001m";colordc="007m";colordd="007m";colorde="007m"
-  else                                   dispsize="E";colorda="001m";colordb="007m";colordc="007m";colordd="007m";colorde="007m";fi
+  else                                   dispsize="E";colorda="001m";colordb="007m";colordc="007m";colordd="007m";colorde="007m";updatetime=$((5));fi
   walletbal="             ${walletbal}";walletbalA="${walletbal:(-9):3}";walletbalB="${walletbal:(-6):3}";walletbalC="${walletbal:(-3):3}";walletbal="${walletbalA// /} ${walletbalB// /} ${walletbalC// /}";walletbal="${walletbal/  /}"
 #----------START--WEB DATA GRABBER---------------------------------------------
   mkdir -p pages;rm -f nodelist-temp.txt pages/webdatanew.txt
@@ -50,8 +48,11 @@ while : ;do
   myrecs=$(wc -l nodelist-temp.txt | sed -e 's/ .*//')
   dirty=false
   while read thisID unused; do
-      if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +30`" || ! test -f "pages/webdata.txt" ;then  #freshness check
-        dirty=true;fi
+    if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +30`" || ! test -f "pages/webdata.txt" ;then  #freshness check
+      dirty=true
+    else
+      if [ "$myrecs" != "$(wc -l pages/webdata.txt | sed -e 's/ .*//')" ];then dirty=true;fi
+    fi
   done < nodelist-temp.txt
   if [ "$dirty" = true ];then
     echo "Downloading data about $myrecs nodes from 1ml.com : "`date`
@@ -66,7 +67,7 @@ while : ;do
         fi #download html
         if eval head -n 200 "pages/$thisID.html" | grep -q 'globe';then
           thisgeodata=`eval head -n 200 pages/$thisID.html|grep -A4 "globe"|pup a,li text{}| tr '\n' ','`
-        else thisgeodata=" ,--,--,";fi
+        else thisgeodata=" , , ";fi
           hex=`eval head -n 200 pages/$thisID.html| grep -A1 '<h5>Color</h5>' | pup span text{} | jq -r -R '.[1:7]'`
           r=$(printf '0x%0.2s' "$hex"); g=$(printf '0x%0.2s' ${hex#??}); b=$(printf '0x%0.2s' ${hex#????})  #hex to anso color conversion
         thiscolor=$(echo -e `printf "%03d" "$(((r<75?0:(r-35)/40)*6*6+(g<75?0:(g-35)/40)*6+(b<75?0:(b-35)/40)+16))"`)"m"
@@ -110,33 +111,30 @@ while : ;do
     balance="'\e[38;5;232m'___________'\e[0m'${balance}";balance="${balance:0:14}${balance: -17}"
     #--------------display table size configurator
     if   [ "$dispsize" = "A" ];then
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:6}"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,St,Co"
+      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:7}"`
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,State,Country"
     elif [ "$dispsize" = "B" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age"
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age"
     elif [ "$dispsize" = "C" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac."
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Chans,Capac."
     elif [ "$dispsize" = "D" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:20}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init"
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init"
     else
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:3},$balance,$incoming,"${title:0:8}",'\e[38;5;$ipcolor' ${ipstatus:0:1}'\e[0m',${cstate:0:1},${init:0:1}"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mT,A,I"
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mT,A,I"
     fi
     echo "${OUTPUTME}" >> combined.txt
   done <nodelist.txt 3<pages/webdata.txt
 #----------START--DISPLAY & WAIT---------------------------------------------
-  data_table=`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`
-  echo -e "${header}\n${data_table}" > myout.txt
-  OUTPUTF=`cat myout.txt | column -n -ts,`
-  rm -f combined.txt myout.txt nodelist.txt nodelist-temp.txt rawout.txt rawoutp.txt
-  clear
-  echo -e "${OUTPUTF}"
+  echo -e "${header}\n`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`"  | column -n -ts, > myout.txt  #main data table
+  clear;  echo -e `cat myout.txt` #helps with screen refresh lag?
   echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
   echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Chans: \e[38;5;99m${recs}\e[0m (${reco}/${reci})"
-  secsi=$((5));while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 165\e[0m] "
-  for (( c=1; c<=$(( 5 - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;208m$secsi\e[0m "
-  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "«";done ;echo -en "\033[0K\r"; if  [ $secsi -ne 0 ];then sleep 1;fi ; : $((secsi--));done   #countdown
+  rm -f combined.txt myout.txt nodelist.txt nodelist-temp.txt rawout.txt rawoutp.txt
+  secsi=$updatetime;while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 165\e[0m] "
+  for (( c=1; c<=$(( $updatetime - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;173m$secsi\e[0m "
+  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "«";done ;echo -en "\033[0K\r\e[?25l"; if  [ $secsi -ne 0 ];then sleep 1;fi ; : $((secsi--));done   #countdown
 done
