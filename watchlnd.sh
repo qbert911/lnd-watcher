@@ -54,8 +54,8 @@ while : ;do
         dirty=true;fi
   done < nodelist-temp.txt
   if [ "$dirty" = true ];then
-    echo "Downloading data for $myrecs nodes: "`date`
-    barlen=$(( $displaywidth - 2 )) #DO MORE
+    echo "Downloading data about $myrecs nodes from 1ml.com : "`date`
+    barlen=$(( $displaywidth )) 
     for (( c=1; c<=$(( $barlen - ( $(( $barlen  / $myrecs )) * $myrecs ) )); c++ )); do echo -ne "=";done        #fill in gap bars segments
     while read thisID f2 f3 f4 f5; do
         if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +27`";then  #freshness check
@@ -78,7 +78,7 @@ while : ;do
         
         title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<)'(>"`    #remove problem characters from alias
         ipexam=`eval lncli getnodeinfo ${thisID} |jq -r '.node.addresses[].addr'`
-        ipstatus="-ip4-";ipcolor="001m"
+        ipstatus="-ip4-";ipcolor="089m"
         if [[ $ipexam == *"n:"* ]];then ipstatus="onion";ipcolor="113m";fi
         if [[ $ipexam == *":"*":"* ]];then ipstatus="mixed";ipcolor="111m";fi
         if [[ $ipexam == *"n:"*"n:"* ]];then ipstatus="onion";ipcolor="113m";fi
@@ -108,7 +108,7 @@ while : ;do
     if [[ -n "$balance" ]];then abalance="           ${balance}";balanceA="${abalance:(-9):3}";balanceB="${abalance:(-6):3}";balanceC="${abalance:(-3):3}";balance="${balanceA// /} ${balanceB// /} ${balanceC// /}";balance="${balance/  /}";fi
     incoming="'\e[38;5;232m'___________'\e[0m'${incoming}";incoming="${incoming:0:14}${incoming: -17}"
     balance="'\e[38;5;232m'___________'\e[0m'${balance}";balance="${balance:0:14}${balance: -17}"
-    #--------------display 
+    #--------------display table size configurator
     if   [ "$dispsize" = "A" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:6}"`
       header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,St,Co"
@@ -131,8 +131,12 @@ while : ;do
   data_table=`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`
   echo -e "${header}\n${data_table}" > myout.txt
   OUTPUTF=`cat myout.txt | column -n -ts,`
-  clear
-  echo -e "${OUTPUTF}\nIn wallet   \e[38;5;111m${walletbal}\e[0m  Income: \e[38;5;83m${income}\e[0m Chans: \e[38;5;45m${recs}\e[0m (${reco}/${reci})\n  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
   rm -f combined.txt myout.txt nodelist.txt nodelist-temp.txt rawout.txt rawoutp.txt
-  secsi=$((5));while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 165\e[0m] Update in \e[38;5;99m$secsi \e[0m \033[0K\r";sleep 1; : $((secsi--));done   #countdown
+  clear
+  echo -e "${OUTPUTF}"
+  echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
+  echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Chans: \e[38;5;99m${recs}\e[0m (${reco}/${reci})"
+  secsi=$((5));while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 165\e[0m] "
+  for (( c=1; c<=$(( 5 - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;208m$secsi\e[0m "
+  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "«";done ;echo -en "\033[0K\r"; if  [ $secsi -ne 0 ];then sleep 1;fi ; : $((secsi--));done   #countdown
 done
