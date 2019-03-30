@@ -5,6 +5,7 @@ echo -en "\033]0;LND Watcher\a"
 IFS=","
 
 while : ;do
+#----------START--LND RPC POLLING----------------------------------------------
   height=`eval lncli getinfo |jq -r '.block_height'`
   walletbal=`eval lncli walletbalance |jq -r '.total_balance'`
   unconfirmed=`eval lncli walletbalance |jq -r '.unconfirmed_balance'`
@@ -49,7 +50,7 @@ while : ;do
   myrecs=$(wc -l nodelist-temp.txt | sed -e 's/ .*//')
   dirty=false
   while read thisID unused; do
-      if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +30`" || test -f "mismatch.txt" || ! test -f "pages/webdata.txt" ;then  #freshness check
+      if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +30`" || ! test -f "pages/webdata.txt" ;then  #freshness check
         dirty=true;fi
   done < nodelist-temp.txt
   if [ "$dirty" = true ];then
@@ -74,64 +75,59 @@ while : ;do
         thisage=`eval head -n 300 pages/$thisID.html| grep -A1 '<h5>Age</h5>' | pup span text{}`
         avgchancap=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s add/length`
         thisbiggestchan=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s max`
-        eval echo "${thisID},${thiscapacity:0:-4},${thisconnectedcount},${avgchancap},${thisbiggestchan},${thisage},${thiscolor},${thisgeodata:0:-1}" >> pages/webdatanew.txt  #write line to file
+        
+        title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<)'(>"`    #remove problem characters from alias
+        ipexam=`eval lncli getnodeinfo ${thisID} |jq -r '.node.addresses[].addr'`
+        ipstatus="-ip4-";ipcolor="001m"
+        if [[ $ipexam == *"n:"* ]];then ipstatus="onion";ipcolor="113m";fi
+        if [[ $ipexam == *":"*":"* ]];then ipstatus="mixed";ipcolor="111m";fi
+        if [[ $ipexam == *"n:"*"n:"* ]];then ipstatus="onion";ipcolor="113m";fi
+        if [[ $ipexam == *":"*":"*":"* ]];then ipstatus="mixed ";ipcolor="111m";fi
+        eval echo "${thisID},${title},${ipstatus},${ipcolor},${thiscapacity:0:-4},${thisconnectedcount},${avgchancap},${thisbiggestchan},${thisage},${thiscolor},${thisgeodata:0:-1}" >> pages/webdatanew.txt  #write line to file
         for (( c=1; c<=$(( ( $barlen  / $myrecs ) - $(( $barlen  / $myrecs / 2 )) )); c++ )); do echo -ne "\e[38;5;99m=\e[0m";done     #draw bar segment
     done < nodelist-temp.txt
     sort pages/webdatanew.txt -o pages/webdata.txt
-    rm -f pages/webdatanew.txt mismatch.txt
+    rm -f pages/webdatanew.txt
   fi
-#----------END----WEB DATA GRABBER---------------------------------------------
-#-------start--combiner--------------------------------------------------------
+#----------START--TABLE BUILDER------------------------------------------------
   rm -f combined.txt     #just in case of program interruption 
   recs=$((-1))           #so we don't count self
-  while read -r thisID balance incoming cstate init cf && read -r thatID thiscapacity thisconnectedcount avgchancap thisbiggestchan age color city state country junk <&3; do
+  while read -r thisID balance incoming cstate init cf && read -r thatID title ipstatus ipcolor thiscapacity thisconnectedcount avgchancap thisbiggestchan age color city state country junk <&3; do
     : $((recs++))
-    if [ "$thisID" = "$thatID" ];then
     #--------------processing  	
-        if [ "$init"   = "true" ];then balance=$(( $balance + $cf ))
-    	elif [ "$init"   = "false" ];then incoming=$(( $incoming + $cf ));fi
+    if   [ "$state"   = "" ];then country=$city ;              city=""
+    elif [ "$country" = "" ];then country=$state; state=$city; city="";fi
 
-    	if [ "$balance"   = "0" ];then balance="";fi
-    	if [ "$incoming"  = "0" ];then incoming="";fi
+    if   [ "$init"   = "true" ];then balance=$(( $balance + $cf ))
+  	elif [ "$init"   = "false" ];then incoming=$(( $incoming + $cf ));fi
 
-      if [[ -n "$incoming" ]];then incoming="          ${incoming}";incomingA="${incoming:(-9):3}";incomingB="${incoming:(-6):3}";incomingC="${incoming:(-3):3}";incoming="${incomingA// /} ${incomingB// /} ${incomingC// /}";incoming="${incoming/  /}";fi
-      incoming="'\e[38;5;232m'...........'\e[0m'${incoming}";incoming="${incoming:0:14}${incoming: -17}"
-      if [[ -n "$balance" ]];then abalance="           ${balance}";balanceA="${abalance:(-9):3}";balanceB="${abalance:(-6):3}";balanceC="${abalance:(-3):3}";balance="${balanceA// /} ${balanceB// /} ${balanceC// /}";balance="${balance/  /}";fi
-      balance="'\e[38;5;232m'___________'\e[0m'${balance}";balance="${balance:0:14}${balance: -17}"
+  	if [ "$balance"   = "0" ];then balance="";fi
+  	if [ "$incoming"  = "0" ];then incoming="";fi
 
-      title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<)'(>"`    #remove problem characters from alias
-      ipexam=`eval lncli getnodeinfo ${thisID} |jq -r '.node.addresses[].addr'`
-      ipstatus="-ip4-";ipcolor="001m"
-      if [[ $ipexam == *"n:"* ]];then ipstatus="onion";ipcolor="113m";fi
-      if [[ $ipexam == *":"*":"* ]];then ipstatus="mixed";ipcolor="111m";fi
-      if [[ $ipexam == *"n:"*"n:"* ]];then ipstatus="onion";ipcolor="113m";fi
-      if [[ $ipexam == *":"*":"*":"* ]];then ipstatus="mixed ";ipcolor="111m";fi
-      if   [ "$state"   = "" ];then country=$city ;              city=""
-    	elif [ "$country" = "" ];then country=$state; state=$city; city="";fi
-    #--------------processing 
-      if   [ "$dispsize" = "A" ];then
-        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:6}"`
-        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,St,Co"
-      elif [ "$dispsize" = "B" ];then
-        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age"`
-        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age"
-      elif [ "$dispsize" = "C" ];then
-        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
-        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac."
-      elif [ "$dispsize" = "D" ];then
-        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:20}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
-        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init"
-      else
-        OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:3},$balance,$incoming,"${title:0:8}",'\e[38;5;$ipcolor' ${ipstatus:0:1}'\e[0m',${cstate:0:1},${init:0:1}"`
-        header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mT,A,I"
-      fi
+    if [[ -n "$incoming" ]];then incoming="          ${incoming}";incomingA="${incoming:(-9):3}";incomingB="${incoming:(-6):3}";incomingC="${incoming:(-3):3}";incoming="${incomingA// /} ${incomingB// /} ${incomingC// /}";incoming="${incoming/  /}";fi
+    if [[ -n "$balance" ]];then abalance="           ${balance}";balanceA="${abalance:(-9):3}";balanceB="${abalance:(-6):3}";balanceC="${abalance:(-3):3}";balance="${balanceA// /} ${balanceB// /} ${balanceC// /}";balance="${balance/  /}";fi
+    incoming="'\e[38;5;232m'___________'\e[0m'${incoming}";incoming="${incoming:0:14}${incoming: -17}"
+    balance="'\e[38;5;232m'___________'\e[0m'${balance}";balance="${balance:0:14}${balance: -17}"
+    #--------------display 
+    if   [ "$dispsize" = "A" ];then
+      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:6}"`
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,St,Co"
+    elif [ "$dispsize" = "B" ];then
+      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age"`
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age"
+    elif [ "$dispsize" = "C" ];then
+      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init,Chans,Capac."
+    elif [ "$dispsize" = "D" ];then
+      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:20}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mType,Active,Init"
     else
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7}"`
-      echo -e "${OUTPUTME}" >> mismatch.txt
+      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:3},$balance,$incoming,"${title:0:8}",'\e[38;5;$ipcolor' ${ipstatus:0:1}'\e[0m',${cstate:0:1},${init:0:1}"`
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Title,[38;5;001m [0mT,A,I"
     fi
     echo "${OUTPUTME}" >> combined.txt
   done <nodelist.txt 3<pages/webdata.txt
-#---------end--combiner--------------------------------------------------------
+#----------START--DISPLAY & WAIT---------------------------------------------
   data_table=`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`
   echo -e "${header}\n${data_table}" > myout.txt
   OUTPUTF=`cat myout.txt | column -n -ts,`
