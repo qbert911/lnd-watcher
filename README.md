@@ -1,16 +1,4 @@
 # Lightning Network Daemon ([LND](https://github.com/lightningnetwork/lnd "lnd github")) Watcher 
 A heads up display of your lightning node in a simple shell script. 
  
-BLACK=`tput setaf 0`
-RED=`tput setaf 1`
-GREEN=`tput setaf 2`
-YELLOW=`tput setaf 3`
-BLUE=`tput setaf 4`
-MAGENTA=`tput setaf 5`
-CYAN=`tput setaf 6`
-WHITE=`tput setaf 7`
-
-BOLD=`tput bold`
-RESET=`tput sgr0`
-
-echo -e "hello ${RED}some red text${RESET} world"
+![lnd git](https://user-images.githubusercontent.com/34988863/55282702-1e10ff00-5320-11e9-9ff5-010ec3a2efa4.PNG)
