@@ -72,7 +72,7 @@ while : ;do
         avgchancap=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s add/length`
         thisbiggestchan=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s max`
         
-        title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<')(>&|"|tr -dc [:print:][:cntrl:]`    #remove problem characters from alias
+        title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<')(>&|,"|tr -dc [:print:][:cntrl:]`    #remove problem characters from alias
         ipexam=`eval lncli getnodeinfo ${thisID} |jq -r '.node.addresses[].addr'`
         ipstatus="-ip4-";ipcolor="089m"
         if [[ $ipexam == *"n:"* ]];then        ipstatus="onion";ipcolor="113m";fi
