@@ -72,7 +72,7 @@ while : ;do
         avgchancap=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s add/length`
         thisbiggestchan=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s max`
         
-        title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<)'(>"`    #remove problem characters from alias
+        title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<')(>"|tr -dc [:print:][:cntrl:]`    #remove problem characters from alias
         ipexam=`eval lncli getnodeinfo ${thisID} |jq -r '.node.addresses[].addr'`
         ipstatus="-ip4-";ipcolor="089m"
         if [[ $ipexam == *"n:"* ]];then        ipstatus="onion";ipcolor="113m";fi
@@ -120,7 +120,7 @@ while : ;do
   echo -e "${header}\n`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`"  | column -n -ts, > myout.txt  #main data table
   clear;  echo -e `cat myout.txt` #helps with screen refresh lag?
   echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
-  echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Chans: \e[38;5;99m${myrecs}\e[0m (${reco}/${reci})"
+  echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Chans: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
   rm -f combined.txt myout.txt nodelist.txt rawout.txt rawoutp.txt
   secsi=$updatetimed;while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 165\e[0m] "
   for (( c=1; c<=$(( $updatetimed - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;173m$secsi\e[0m "
