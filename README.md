@@ -1,7 +1,8 @@
 # Lightning Network Daemon ([LND](https://github.com/lightningnetwork/lnd "lnd github")) Watcher 
 A heads up display of your lightning node in a simple shell script. 
-(Uses jq and pup to parse json and html)
-```
+
+(Depends on [jq](https://stedolan.github.io/jq/download/) and [pup](https://github.com/ericchiang/pup) to parse json and html respectively.)
+```sh
 sudo apt-get install jq
 go get github.com/ericchiang/pup
 curl -o watchlnd.sh https://raw.githubusercontent.com/qbert911/lnd-watcher/master/watchlnd.sh
