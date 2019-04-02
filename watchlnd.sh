@@ -72,7 +72,7 @@ while : ;do
         avgchancap=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s add/length`
         thisbiggestchan=`eval cat pages/$thisID.html| grep -A1 '<h5 class="inline">Capacity</h5>'| pup span text{} | jq -r -R '.[0:-4]' | jq -s max`
         
-        title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<')(>&|,"|tr -dc [:print:][:cntrl:]`    #remove problem characters from alias
+        title=`eval lncli getnodeinfo ${thisID} |jq -r '.node.alias'| tr -d "<')(>&|," |tr -d '"´'|tr -dc [:print:][:cntrl:]`    #remove problem characters from alias
         ipexam=`eval lncli getnodeinfo ${thisID} |jq -r '.node.addresses[].addr'`
         ipstatus="-ip4-";ipcolor="089m"
         if [[ $ipexam == *"n:"* ]];then        ipstatus="onion";ipcolor="113m";fi
@@ -95,8 +95,8 @@ while : ;do
   	if [ "$incoming"  = "0" ];then incoming="";fi
     if [[ -n "$incoming" ]];then incoming="          ${incoming}";incomingA="${incoming:(-9):3}";incomingB="${incoming:(-6):3}";incomingC="${incoming:(-3):3}";incoming="${incomingA// /} ${incomingB// /} ${incomingC// /}";incoming="${incoming/  /}";fi
     if [[ -n "$balance" ]];then abalance="           ${balance}";balanceA="${abalance:(-9):3}";balanceB="${abalance:(-6):3}";balanceC="${abalance:(-3):3}";balance="${balanceA// /} ${balanceB// /} ${balanceC// /}";balance="${balance/  /}";fi
-    incoming="'\e[38;5;232m'___________'\e[0m'${incoming}";incoming="${incoming:0:14}${incoming: -17}"
-    balance="'\e[38;5;232m'___________'\e[0m'${balance}";balance="${balance:0:14}${balance: -17}"
+    incoming="'\e[38;5;232m'____________'\e[0m'${incoming}";incoming="${incoming:0:14}${incoming: -18}"
+    balance="'\e[38;5;232m'____________'\e[0m'${balance}";balance="${balance:0:14}${balance: -18}"
     #--------------display table size configurator
     if   [ "$dispsize" = "A" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:13},${state:0:5},${country:0:7}"`
