@@ -11,7 +11,7 @@ while : ;do
   fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
   
   eval lncli listchannels > rawout.txt
-  cat rawout.txt | jq -r '.channels[] | [.remote_pubkey,.local_balance,.remote_balance,(.active|tostring),(.initiator|tostring),.commit_fee] | join("," )' > nodelist.txt
+  cat rawout.txt | jq -r '.channels[] |select(.private==false)| [.remote_pubkey,.local_balance,.remote_balance,(.active|tostring),(.initiator|tostring),.commit_fee] | join("," )' > nodelist.txt
   reco=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==true) | "1"|tonumber]|add'`
   reci=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==false) | "1"|tonumber]|add'`
   unset_balanceo=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==true) |.unsettled_balance|tonumber]|add'`
@@ -38,7 +38,7 @@ while : ;do
   displaywidth=`tput cols` 
   if   [ "$displaywidth" -gt 164 ]; then dispsize="A";colorda="007m";colordb="007m";colordc="007m";colordd="007m";colorde="001m";updatetimed=$updatetime
   elif [ "$displaywidth" -gt 124 ]; then dispsize="B";colorda="007m";colordb="007m";colordc="007m";colordd="001m";colorde="007m";updatetimed=$updatetime
-  elif [ "$displaywidth" -gt 99 ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m";updatetimed=$updatetime
+  elif [ "$displaywidth" -gt 99  ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m";updatetimed=$updatetime
   elif [ "$displaywidth" -gt 79  ]; then dispsize="D";colorda="007m";colordb="001m";colordc="007m";colordd="007m";colorde="007m";updatetimed=$updatetime
   else                                   dispsize="E";colorda="001m";colordb="007m";colordc="007m";colordd="007m";colorde="007m";updatetimed=$((5));fi
   walletbal="             ${walletbal}";walletbalA="${walletbal:(-9):3}";walletbalB="${walletbal:(-6):3}";walletbalC="${walletbal:(-3):3}";walletbal="${walletbalA// /} ${walletbalB// /} ${walletbalC// /}";walletbal="${walletbal/  /}"
