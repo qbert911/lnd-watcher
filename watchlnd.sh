@@ -100,13 +100,13 @@ while : ;do
     #--------------display table size configurator
     if   [ "$dispsize" = "A" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:10},${state:0:5},${country:0:7}"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age,City,State,Country"
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac.,AvgChan,Biggest,Age,City,State,Country"
     elif [ "$dispsize" = "B" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:19}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Chans,Capac.,AvgChan,Biggest,Age"
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac.,AvgChan,Biggest,Age"
     elif [ "$dispsize" = "C" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:19}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Chans,Capac."
+      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac."
     elif [ "$dispsize" = "D" ];then
       OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:18}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
       header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init"
@@ -120,7 +120,7 @@ while : ;do
   echo -e "${header}\n`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`"  | column -n -ts, > myout.txt  #main data table
   clear;  echo -e `cat myout.txt` #helps with screen refresh lag?
   echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
-  echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Chans: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
+  echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Channels: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
   rm -f combined.txt myout.txt nodelist.txt rawout.txt rawoutp.txt
   secsi=$updatetimed;while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 100\e[38;5;$colordd 125\e[0m and\e[38;5;$colorde 165\e[0m] "
   for (( c=1; c<=$(( $updatetimed - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;173m$secsi\e[0m "
