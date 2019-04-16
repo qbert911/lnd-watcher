@@ -11,7 +11,7 @@ while : ;do
   fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
   
   eval lncli listchannels > rawout.txt
-  cat rawout.txt | jq -r '.channels[] |select(.private==false)| [.remote_pubkey,.local_balance,.remote_balance,(.active|tostring),(.initiator|tostring),.commit_fee] | join("," )' > nodelist.txt
+  cat rawout.txt | jq -r '.channels[] |select(.private==false)| [.remote_pubkey,.local_balance,.remote_balance,(.active|tostring),(.initiator|tostring),.commit_fee,.chan_id] | join("," )' > nodelist.txt
   reco=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==true) | "1"|tonumber]|add'`
   reci=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==false) | "1"|tonumber]|add'`
   unset_balanceo=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==true) |.unsettled_balance|tonumber]|add'`
@@ -35,10 +35,10 @@ while : ;do
   eval lncli getinfo | jq -r '[.identity_pubkey,"'${outgoingcap}'","'${incomincap}'","--me--"," "," "]| join("," )' >> nodelist.txt  #add own node to list
   
   sort nodelist.txt -o nodelist.txt
-  displaywidth=`tput cols` 
-  if   [ "$displaywidth" -gt 164 ]; then dispsize="A";colorda="007m";colordb="007m";colordc="007m";colordd="007m";colorde="001m";updatetimed=$updatetime
-  elif [ "$displaywidth" -gt 124 ]; then dispsize="B";colorda="007m";colordb="007m";colordc="007m";colordd="001m";colorde="007m";updatetimed=$updatetime
-  elif [ "$displaywidth" -gt 99  ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m";updatetimed=$updatetime
+  displaywidth=`tput cols`
+  if   [ "$displaywidth" -gt 174 ]; then dispsize="A";colorda="007m";colordb="007m";colordc="007m";colordd="007m";colorde="001m";updatetimed=$updatetime
+  elif [ "$displaywidth" -gt 134 ]; then dispsize="B";colorda="007m";colordb="007m";colordc="007m";colordd="001m";colorde="007m";updatetimed=$updatetime
+  elif [ "$displaywidth" -gt 104  ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m";updatetimed=$updatetime
   elif [ "$displaywidth" -gt 79  ]; then dispsize="D";colorda="007m";colordb="001m";colordc="007m";colordd="007m";colorde="007m";updatetimed=$updatetime
   else                                   dispsize="E";colorda="001m";colordb="007m";colordc="007m";colordd="007m";colorde="007m";updatetimed=$((5));fi
   walletbal="             ${walletbal}";walletbalA="${walletbal:(-9):3}";walletbalB="${walletbal:(-6):3}";walletbalC="${walletbal:(-3):3}";walletbal="${walletbalA// /} ${walletbalB// /} ${walletbalC// /}";walletbal="${walletbal/  /}"
@@ -84,9 +84,9 @@ while : ;do
     done < nodelist.txt
   fi
 #----------START--TABLE BUILDER------------------------------------------------
-  rm -f combined.txt     #just in case of program interruption 
-  while read -r thisID balance incoming cstate init cf && read -r thatID title ipstatus ipcolor thiscapacity thisconnectedcount avgchancap thisbiggestchan age color city state country junk <&3; do
-    #--------------processing  	
+  rm -f combined.txt     #just in case of program interruption
+  while read -r thisID balance incoming cstate init cf chanid && read -r thatID title ipstatus ipcolor thiscapacity thisconnectedcount avgchancap thisbiggestchan age color city state country junk <&3; do
+    #--------------processing
     if   [ "$state"   = "" ];then country=$city ;              city=""
     elif [ "$country" = "" ];then country=$state; state=$city; city="";fi
     if   [ "$init"   = "true" ];then balance=$(( $balance + $cf ))
@@ -99,19 +99,19 @@ while : ;do
     balance="'\e[38;5;232m'_____________'\e[0m'${balance}";balance="${balance:0:14}${balance: -19}"
     #--------------display table size configurator
     if   [ "$dispsize" = "A" ];then
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:10},${state:0:5},${country:0:7}"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac.,AvgChan,Biggest,Age,City,State,Country"
+      OUTPUTME=`eval echo "'\e[38;5;$color'${chanid:0:2}'\e[0m'${chanid:2},$balance,$incoming,"$title",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age,${city:0:10},${state:0:5},${country:0:7}"`
+      header="[38;5;232m02[0m Channel   ID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac.,AvgChan,Biggest,Age,City,State,Country"
     elif [ "$dispsize" = "B" ];then
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:19}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac.,AvgChan,Biggest,Age"
+      OUTPUTME=`eval echo "'\e[38;5;$color'${chanid:0:2}'\e[0m'${chanid:2},$balance,$incoming,"${title:0:19}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6},${avgchancap:0:6},${thisbiggestchan:0:6},$age"`
+      header="[38;5;232m02[0m Channel   ID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac.,AvgChan,Biggest,Age"
     elif [ "$dispsize" = "C" ];then
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:19}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
-      header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac."
+      OUTPUTME=`eval echo "'\e[38;5;$color'${chanid:0:2}'\e[0m'${chanid:2},$balance,$incoming,"${title:0:19}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init,$thisconnectedcount,${thiscapacity:0:6}"`
+      header="[38;5;232m02[0m Channel   ID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init,Nodes,Capac."
     elif [ "$dispsize" = "D" ];then
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:7},$balance,$incoming,"${title:0:18}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
+      OUTPUTME=`eval echo "'\e[38;5;$color'${chanid:0:2}'\e[0m'${chanid:(-3)},$balance,$incoming,"${title:0:18}",'\e[38;5;$ipcolor' $ipstatus'\e[0m',${cstate:0:8},$init"`
       header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mType,Active,Init"
     else
-      OUTPUTME=`eval echo "'\e[38;5;$color'${thisID:0:2}'\e[0m'${thisID:2:3},$balance,$incoming,"${title:0:5}",'\e[38;5;$ipcolor' ${ipstatus:0:1}'\e[0m',${cstate:0:1},${init:0:1}"`
+      OUTPUTME=`eval echo "'\e[38;5;$color'${chanid:0:2}'\e[0m'${chanid:(-3)},$balance,$incoming,"${title:0:5}",'\e[38;5;$ipcolor' ${ipstatus:0:1}'\e[0m',${cstate:0:1},${init:0:1}"`
       header="[38;5;232m02[0mID,[38;5;232m[0mOutgoing,[38;5;232m[0mIncoming,Alias,[38;5;001m [0mT,A,I"
     fi
     echo "${OUTPUTME}" >> combined.txt
@@ -122,7 +122,7 @@ while : ;do
   echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
   echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Channels: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
   rm -f combined.txt myout.txt nodelist.txt rawout.txt rawoutp.txt
-  secsi=$updatetimed;while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 100\e[38;5;$colordd 125\e[0m and\e[38;5;$colorde 165\e[0m] "
+  secsi=$updatetimed;while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 175\e[0m] "
   for (( c=1; c<=$(( $updatetimed - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;173m$secsi\e[0m "
   for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "«";done ;echo -en "\033[0K\r\e[?25l"; if  [ $secsi -ne 0 ];then sleep 1;fi ; : $((secsi--));done   #countdown
 done
