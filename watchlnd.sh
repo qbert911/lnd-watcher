@@ -7,7 +7,7 @@ while : ;do
   height=`eval lncli getinfo |jq -r '.block_height'`
   walletbal=`eval lncli walletbalance |jq -r '.total_balance'`
   unconfirmed=`eval lncli walletbalance |jq -r '.unconfirmed_balance'`
-  income=`eval lncli feereport | jq -r '.month_fee_sum'`
+  income=`eval lncli fwdinghistory --start_time 5000 --end_time 50000000000000000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add'`
   fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
   
   eval lncli listchannels > rawout.txt
@@ -38,7 +38,7 @@ while : ;do
   displaywidth=`tput cols`
   if   [ "$displaywidth" -gt 174 ]; then dispsize="A";colorda="007m";colordb="007m";colordc="007m";colordd="007m";colorde="001m";updatetimed=$updatetime
   elif [ "$displaywidth" -gt 134 ]; then dispsize="B";colorda="007m";colordb="007m";colordc="007m";colordd="001m";colorde="007m";updatetimed=$updatetime
-  elif [ "$displaywidth" -gt 104  ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m";updatetimed=$updatetime
+  elif [ "$displaywidth" -gt 104 ]; then dispsize="C";colorda="007m";colordb="007m";colordc="001m";colordd="007m";colorde="007m";updatetimed=$updatetime
   elif [ "$displaywidth" -gt 79  ]; then dispsize="D";colorda="007m";colordb="001m";colordc="007m";colordd="007m";colorde="007m";updatetimed=$updatetime
   else                                   dispsize="E";colorda="001m";colordb="007m";colordc="007m";colordd="007m";colorde="007m";updatetimed=$((5));fi
   walletbal="             ${walletbal}";walletbalA="${walletbal:(-9):3}";walletbalB="${walletbal:(-6):3}";walletbalC="${walletbal:(-3):3}";walletbal="${walletbalA// /} ${walletbalB// /} ${walletbalC// /}";walletbal="${walletbal/  /}"
@@ -120,7 +120,7 @@ while : ;do
   echo -e "${header}\n`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`"  | column -n -ts, > myout.txt  #main data table
   clear;  echo -e `cat myout.txt` #helps with screen refresh lag?
   echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
-  echo -e "In wallet   \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m   Channels: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
+  echo -e "In wallet: \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m msat   Channels: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
   rm -f combined.txt myout.txt nodelist.txt rawout.txt rawoutp.txt
   secsi=$updatetimed;while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}50\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 175\e[0m] "
   for (( c=1; c<=$(( $updatetimed - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;173m$secsi\e[0m "
