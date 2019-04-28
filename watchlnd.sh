@@ -87,6 +87,7 @@ while : ;do
   rm -f combined.txt     #just in case of program interruption
   while read -r thisID balance incoming cstate init cf chanid && read -r thatID title ipstatus ipcolor thiscapacity thisconnectedcount avgchancap thisbiggestchan age color city state country junk <&3; do
     #--------------processing
+    if [ "${cstate:0:1}" = "f" ];then cstate=$(echo "$(( ( $(date +%s) - $(lncli getnodeinfo ${thisID} |jq -r '.node.last_update') ) / 3600 ))hrs" );fi
     if   [ "$state"   = "" ];then country=$city ;              city=""
     elif [ "$country" = "" ];then country=$state; state=$city; city="";fi
     if   [ "$init"   = "true" ];then balance=$(( $balance + $cf ))
