@@ -10,7 +10,7 @@ while : ;do
   income=`eval lncli fwdinghistory --start_time 5000 --end_time 50000000000000000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add'`
   fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
   lncli fwdinghistory | jq -r '.forwarding_events[]|.chan_id_in,.chan_id_out' | sort > fwdlist.txt
-
+  
   eval lncli listchannels > rawout.txt
   cat rawout.txt | jq -r '.channels[] |select(.private==false)| [.remote_pubkey,.local_balance,.remote_balance,(.active|tostring),(.initiator|tostring),.commit_fee,.chan_id] | join("," )' > nodelist.txt
   reco=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==true) | "1"|tonumber]|add'`
