@@ -9,7 +9,8 @@ while : ;do
   unconfirmed=`eval lncli walletbalance |jq -r '.unconfirmed_balance'`
   income=`eval lncli fwdinghistory --start_time 5000 --end_time 50000000000000000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add'`
   fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
-  
+  lncli fwdinghistory | jq -r '.forwarding_events[]|.chan_id_in,.chan_id_out' | sort > fwdlist.txt
+
   eval lncli listchannels > rawout.txt
   cat rawout.txt | jq -r '.channels[] |select(.private==false)| [.remote_pubkey,.local_balance,.remote_balance,(.active|tostring),(.initiator|tostring),.commit_fee,.chan_id] | join("," )' > nodelist.txt
   reco=`cat rawout.txt | jq -s '[.[].channels[]|select(.initiator==true) | "1"|tonumber]|add'`
@@ -32,7 +33,7 @@ while : ;do
   limbo=`cat rawoutp.txt | jq -r '.total_limbo_balance'`
   limbot=`cat rawoutp.txt |grep _matur| cut -d":" -f2|tr -d "\n,"`
   
-  eval lncli getinfo | jq -r '[.identity_pubkey,"'${outgoingcap}'","'${incomincap}'","--me--"," "," "]| join("," )' >> nodelist.txt  #add own node to list
+  eval lncli getinfo | jq -r '[.identity_pubkey,"'${outgoingcap}'","'${incomincap}'","--me--","x "," "]| join("," )' >> nodelist.txt  #add own node to list
   
   sort nodelist.txt -o nodelist.txt
   displaywidth=`tput cols`
@@ -97,6 +98,8 @@ while : ;do
     else 
       cstate=$(echo "'\e[38;5;232m\e[0m'$cstate" )
     fi    
+    if [ "${chanid:0:1}" = "6" ];then fwdcount=`eval cat fwdlist.txt | grep -c -s $chanid`
+      if [ "$fwdcount" -gt "0" ];then     cstate=$(echo "$cstate$fwdcount" ); fi; fi   
     if   [ "$state"   = "" ];then country=$city ;              city=""
     elif [ "$country" = "" ];then country=$state; state=$city; city="";fi
     if   [ "$init"   = "true" ];then balance=$(( $balance + $cf ))
@@ -127,11 +130,11 @@ while : ;do
     echo "${OUTPUTME}" >> combined.txt
   done <nodelist.txt 3<pages/webdata.txt
 #----------START--DISPLAY & WAIT---------------------------------------------
-  echo -e "${header}\n`cat combined.txt|sort --field-separator=',' -k 7,7 -k 5,5 -k 4`"  | column -n -ts, > myout.txt  #main data table
-  clear;  echo -e `cat myout.txt` #helps with screen refresh lag?
+  echo -e "${header}\n`cat combined.txt|sort -d -i --field-separator=',' -k 7r,7r -k 3,3 -k 2`"  | column -n -ts, > myout.txt  #main data table
+  clear;  echo -e `cat myout.txt` #helps with screen refresh lag?  
   echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
   echo -e "In wallet: \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m msat   Channels: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
-  rm -f combined.txt myout.txt nodelist.txt rawout.txt rawoutp.txt
+  rm -f combined.txt myout.txt nodelist.txt rawout.txt rawoutp.txt fwdlist.txt
   secsi=$updatetimed;while [ $secsi -gt -1 ]; do echo -ne " Columns~"`tput cols`" [\e[38;5;${colorda}55\e[38;5;$colordb 80\e[38;5;$colordc 105\e[38;5;$colordd 135\e[0m and\e[38;5;$colorde 175\e[0m] "
   for (( c=1; c<=$(( $updatetimed - $secsi )); c++ )); do echo -ne " ";done ;  for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "»";done ;echo -ne " \e[38;5;173m$secsi\e[0m "
   for (( c=1; c<=$(( $secsi )); c++ )); do echo -ne "«";done ;echo -en "\033[0K\r\e[?25l"; if  [ $secsi -ne 0 ];then sleep 1;fi ; : $((secsi--));done   #countdown
