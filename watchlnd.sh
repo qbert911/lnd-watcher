@@ -2,13 +2,22 @@
 PS1=$;PROMPT_COMMAND=;echo -en "\033]0;LND Watcher\a"
 IFS=","
 updatetime=$((7))
+oldincome="0"
 while : ;do
 #----------START--LND RPC POLLING----------------------------------------------
   height=`eval lncli getinfo |jq -r '.block_height'`
   walletbal=`eval lncli walletbalance |jq -r '.total_balance'`
   unconfirmed=`eval lncli walletbalance |jq -r '.unconfirmed_balance'`
-  income=`eval lncli fwdinghistory --start_time 5000 --end_time 50000000000000000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add'`
-  fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
+  a=$(lncli fwdinghistory --end_time 1558698558 --start_time 0000005000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add')  #split at ~100 entries (max output)
+  b=$(lncli fwdinghistory --end_time 1571000000 --start_time 1558698558|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add')
+  c=$(lncli fwdinghistory --end_time 1572900000 --start_time 1571000000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add')
+  d=$(lncli fwdinghistory --end_time 1575630000 --start_time 1572900000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add')
+  e=$(lncli fwdinghistory --end_time 9000000000 --start_time 1575630000|jq -r '[.forwarding_events[]|(.fee_msat|tonumber)]|add')
+ 
+ income=$(( $a + $b + $c + $d + $e ))
+  if [ "$oldincome" -ne "$income" ]; then `eval scp newbolt.txt ben@192.168.0.41:/home/ben/newbolt.txt`; oldincome=${income} ;fi
+  
+fwding=`eval lncli fwdinghistory |jq -c '.forwarding_events[]|.amt_in+"("+.fee_msat+") "'|tr -d '\n"'`
   lncli fwdinghistory | jq -r '.forwarding_events[]|.chan_id_in,.chan_id_out' | sort > fwdlist.txt
   
   eval lncli listchannels > rawout.txt
@@ -48,7 +57,7 @@ while : ;do
   savedrecs=$(wc -l pages/webdata.txt | sed -e 's/ .*//')
   dirty=false
   while read thisID unused; do
-    if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +30`" || ! test -f "pages/webdata.txt" ;then dirty=true;break    #freshness check
+    if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +9930`" || ! test -f "pages/webdata.txt" ;then dirty=true;break    #freshness check
     elif [ "$myrecs" != "$savedrecs" ];then dirty=true;break;fi
   done < nodelist.txt
   if [ "$dirty" = true ];then
@@ -57,8 +66,8 @@ while : ;do
     barlen=$(( $displaywidth )) 
     for (( c=1; c<=$(( $barlen - ( $(( $barlen  / $myrecs )) * $myrecs ) )); c++ )); do echo -ne "=";done        #fill in gap bars segments
     while read thisID f2 f3 f4 f5; do
-        if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +27`";then  #freshness check
-          eval curl -s https://1ml.com/node/$thisID/channels?order=capacity -o pages/$thisID.html   #download html
+        if ! test -f "pages/$thisID.html" || test "`find pages/$thisID.html -mmin +9927`";then  #freshness check
+          eval curl -s https://1ml.com/node/$thisID -o pages/$thisID.html   #download html
           for (( c=1; c<=$(( $barlen  / $myrecs / 2 )); c++ )); do echo -n -e "\e[38;5;54m=\e[0m";done    #draw bar segment
         else for (( c=1; c<=$(( $barlen  / $myrecs / 2 )); c++ )); do echo -n -e "\e[38;5;235m=\e[0m";done;fi   #draw bar segment
         if eval head -n 200 "pages/$thisID.html" | grep -q 'globe';then
@@ -130,7 +139,7 @@ while : ;do
     echo "${OUTPUTME}" >> combined.txt
   done <nodelist.txt 3<pages/webdata.txt
 #----------START--DISPLAY & WAIT---------------------------------------------
-  echo -e "${header}\n`cat combined.txt|sort -d -i --field-separator=',' -k 7r,7r -k 3,3 -k 2`"  | column -n -ts, > myout.txt  #main data table
+  echo -e "${header}\n`cat combined.txt|sort -d -i --field-separator=',' -k 7r,7r -k 6,6 -k 3 `"  | column -n -ts, > myout.txt  #main data table
   clear;  echo -e `cat myout.txt` #helps with screen refresh lag?  
   echo -e "  (${unconfirmed} unconf) (${limbo} in limbo$limbot) (${unset_balanceo} / ${unset_balancei} unsettled ${unset_times}) Recent fwds: ${fwding}"
   echo -e "In wallet: \e[38;5;45m${walletbal}\e[0m    Income: \e[38;5;83m${income}\e[0m msat   Channels: \e[38;5;99m$(( $myrecs - 1))\e[0m (${reco}/${reci})"
